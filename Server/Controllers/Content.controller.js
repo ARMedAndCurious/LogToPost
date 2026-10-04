@@ -80,3 +80,16 @@ export const approveContent = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: error.message })
   }
 }
+
+export const getUserContent = async (req, res) => {
+  try {
+    const content = await Content.find({ user: req.user._id })
+      .populate('log')
+      .sort({ createdAt: -1 })
+
+    return res.status(200).json({ content })
+
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message })
+  }
+}
