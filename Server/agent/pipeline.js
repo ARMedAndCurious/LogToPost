@@ -7,7 +7,8 @@ const MODEL = 'openai/gpt-oss-20b'
 const callLLM = async (prompt) => {
   const response = await groq.chat.completions.create({
     model: MODEL,
-    messages: [{ role: 'user', content: prompt }]
+    messages: [{ role: 'user', content: prompt }],
+    max_completion_tokens:2048
   })
   
   const raw = response.choices[0].message.content
