@@ -5,7 +5,6 @@ export const uploadToCloudinary = (buffer) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
                 upload_preset: 'logtopost',
-                folder: 'logtopost',
                 resource_type: 'auto'
             },
             (error, result) => {
