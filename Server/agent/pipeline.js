@@ -6,17 +6,19 @@ const MODEL = 'openai/gpt-oss-20b'
 // Helper — every LLM call goes through this
 const callLLM = async (prompt) => {
   const response = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [{ role: 'user', content: prompt }],
-    max_completion_tokens:2048
-  })
-  
-  const raw = response.choices[0].message.content
-  
-  // Handle empty response
-  if (!raw || raw.trim() === '') {
-    throw new Error('LLM returned empty response')
-  }
+  model: MODEL,
+  messages: [{ role: 'user', content: prompt }],
+  max_completion_tokens: 4096,
+  reasoning_effort: 'low'
+})
+
+const choice = response.choices[0]
+const raw = choice.message.content
+
+if (!raw || raw.trim() === '') {
+  console.error('Empty response. finish_reason:', choice.finish_reason, 'usage:', response.usage)
+  throw new Error('LLM returned empty response')
+}
 
   const jsonMatch = raw.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
@@ -71,13 +73,16 @@ export const runAgentPipeline = async (text, imageUrl, profession) => {
       profession
     )
 
-    // Step 2: Generate for all 3 platforms in parallel
-    // Promise.all runs them simultaneously — 3x faster than sequential
+    const platforms = ['instagram', 'linkedin', 'twitter']
+
+
+    // Step 2: Generate for all 3 platforms 
+    
     const instagramRaw = await generateForPlatform(analysis, 'instagram', profession)
     const linkedinRaw = await generateForPlatform(analysis, 'linkedin', profession)
     const twitterRaw = await generateForPlatform(analysis, 'twitter', profession)
 
-    // Step 3: Critique all 3 in parallel
+    // Step 3: Critique all 3 
     const instagramRefined = await critiqueAndRefine(instagramRaw.options, 'instagram', profession)
     const linkedinRefined = await critiqueAndRefine(linkedinRaw.options, 'linkedin', profession)
     const twitterRefined = await critiqueAndRefine(twitterRaw.options, 'twitter', profession)

@@ -4,8 +4,8 @@ export const uploadToCloudinary = (buffer) => {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
-                upload_preset: 'logtopost',
-                resource_type: 'auto'
+                folder: 'logtopost',
+                resource_type: 'image'
             },
             (error, result) => {
                 if (error) {
