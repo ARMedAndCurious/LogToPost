@@ -4,56 +4,62 @@ import Log from "../models/Log.model.js";
 import Content from "../models/Content.model.js";
 
 export const createPost = async (req, res) => {
-    try {
-        const { text } = req.body;
-        let image = null;
+  try {
+    const { text } = req.body;
+    let image = null;
 
 
 
-        if (!text && !req.file) {
-            return res.status(400).json({ message: "Add a caption or an image" });
-        }
-
-        if (req.file) {
-            const uploadedImage = await uploadToCloudinary(req.file.buffer);
-            image = uploadedImage.secure_url;
-        }
-
-
-        const profession = req.user.profession
-        const result = await runAgentPipeline(text, image, profession)
-
-        const log = await Log.create({
-            user: req.user._id,
-            text,
-            image
-        })
-
-        const platforms = ['instagram', 'linkedin', 'twitter']
-
-        const contentDocs = await Promise.all(
-            platforms.map(platform =>
-                Content.create({
-                    user: req.user._id,
-                    log: log._id,
-                    platform,
-                    options: result.platforms[platform].options,
-                    refined: result.platforms[platform].refined
-                })
-            )
-        )
-
-        return res.status(201).json({
-            message: "Post created successfully!",
-            log,
-            content: contentDocs,
-            analysis: result.analysis,
-            platforms: result.platforms
-        })
-    } catch (error) {
-        console.error("Create post error:", error);
-        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    if (!text && !req.file) {
+      return res.status(400).json({ message: "Add a caption or an image" });
     }
+
+    if (req.file) {
+      const uploadedImage = await uploadToCloudinary(req.file.buffer);
+      image = uploadedImage.secure_url;
+    }
+
+
+    const profession = req.user.profession
+
+    // The user's most recent approved posts, so new drafts match their voice
+    const approvedDocs = await Content.find({ user: req.user._id, status: 'approved' })
+      .sort({ createdAt: -1 })
+      .limit(10)
+    const styleExamples = approvedDocs.map(c => ({ platform: c.platform, text: c.approved }))
+
+    const result = await runAgentPipeline(text, image ? [image] : [], profession, styleExamples)
+    const log = await Log.create({
+      user: req.user._id,
+      text,
+      image
+    })
+
+    const platforms = ['instagram', 'linkedin', 'twitter']
+
+    const contentDocs = await Promise.all(
+      platforms.map(platform =>
+        Content.create({
+          user: req.user._id,
+          log: log._id,
+          platform,
+          options: result.platforms[platform].options,
+          refined: result.platforms[platform].refined
+        })
+      )
+    )
+
+    return res.status(201).json({
+      message: "Post created successfully!",
+      log,
+      content: contentDocs,
+      analysis: result.analysis,
+      platforms: result.platforms
+    })
+  } catch (error) {
+    console.error("Create post error:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
 };
 
 export const approveContent = async (req, res) => {
