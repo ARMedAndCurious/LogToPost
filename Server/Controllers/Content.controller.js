@@ -2,6 +2,7 @@ import { runAgentPipeline } from "../agent/pipeline.js";
 import { uploadToCloudinary } from "../Utils/uploadToCloudinary.js";
 import Log from "../models/Log.model.js";
 import Content from "../models/Content.model.js";
+import groq from "../config/groq.js";
 
 export const createPost = async (req, res) => {
   try {
@@ -99,3 +100,32 @@ export const getUserContent = async (req, res) => {
     return res.status(500).json({ message: 'Server error', error: error.message })
   }
 }
+
+export const transcribeAudio = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: "No audio received" });
+        }
+
+        const file = new File(
+            [req.file.buffer],
+            req.file.originalname || "recording.webm",
+            { type: req.file.mimetype }
+        );
+
+        const result = await groq.audio.transcriptions.create({
+            file,
+            model: "whisper-large-v3-turbo"
+        });
+
+        const text = result.text?.trim();
+        if (!text) {
+            return res.status(422).json({ message: "Couldn't hear anything. Try again." });
+        }
+
+        return res.status(200).json({ text });
+    } catch (error) {
+        console.error("Transcribe error:", error);
+        return res.status(502).json({ message: "Transcription failed", error: error.message });
+    }
+};
